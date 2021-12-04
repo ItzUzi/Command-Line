@@ -98,7 +98,7 @@ int lsh_launch(char **args){
 char **lsh_split_line(char *line){
     int bufsize = LSH_TOK_BUFSIZE, position = 0;
     char **tokens = malloc(bufsize * sizeof(char*));
-    char *token;
+    char *token, **tokens_backup;
 
     if(!tokens){
         fprintf(stderr, "lsh: allocation error\n");
@@ -112,8 +112,10 @@ char **lsh_split_line(char *line){
 
         if (position >= bufsize) {
             bufsize += LSH_TOK_BUFSIZE;
+            tokens_backup = tokens;
             tokens = realloc(tokens, bufsize * sizeof(char*));
             if(!tokens){
+                    free(tokens_backup);
                 fprintf(stderr, "lsh: allocation error\n");
                 exit(EXIT_FAILURE);
             }
@@ -126,6 +128,7 @@ char **lsh_split_line(char *line){
 }
 
 char *lsh_read_line(void){
+#ifdef LSH_USE_STD_GETLINE
     char *line = NULL;
     ssize_t bufsize = 0; // have getline allocate a buffer
 
@@ -137,12 +140,9 @@ char *lsh_read_line(void){
             exit(EXIT_FAILURE);
         }
     }
-
     return line;
-}
-
+#else
 #define LSH_RL_BUFSIZE 1024
-char *lsh_read_line(void){
     int bufsize = LSH_RL_BUFSIZE;
     int position = 0;
     char *buffer = malloc(sizeof(char) * bufsize);
@@ -158,10 +158,12 @@ char *lsh_read_line(void){
         c = getchar();
 
         // If we hit EOF replace it wth a null character and return.
-        if(c == EOF || c == '\n'){
+        if(c == EOF){
+            exit(EXIT_SUCCESS);
+        } else if(c == '\n'){
             buffer[position] = '\0';
             return buffer;
-        } else {
+        }  else {
             buffer[position] = c;
         }
         position++;
@@ -176,6 +178,7 @@ char *lsh_read_line(void){
             }
         }
     }
+#endif
 }
 
 int lsh_execute(char **args){
